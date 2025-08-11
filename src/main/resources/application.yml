@@ -1,0 +1,32 @@
+# Base Application Configuration
+# This configuration is shared across all environments
+# Environment-specific overrides are in application-{profile}.yml
+
+spring:
+  application:
+    name: awakening-backend
+
+  # Default Profile (will be overridden by SPRING_PROFILES_ACTIVE)
+  profiles:
+    default: dev
+
+  # Session Configuration
+  session:
+    store-type: redis
+    timeout: 7d # 7 days session timeout
+
+  # Jackson JSON Configuration
+  jackson:
+    default-property-inclusion: NON_NULL
+    serialization:
+      write-dates-as-timestamps: false
+
+# Management & Health Check Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized

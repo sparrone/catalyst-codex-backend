@@ -1,0 +1,54 @@
+# Development Environment Configuration
+# This file is used when SPRING_PROFILES_ACTIVE=dev
+
+spring:
+  # Development Database Configuration  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/awakening
+    username: ${DB_USERNAME:test_user}
+    password: ${DB_PASSWORD:test_password}
+    driver-class-name: org.postgresql.Driver
+
+  # JPA Configuration for Development
+  jpa:
+    hibernate:
+      # create-drop: Recreates schema on startup (good for development)
+      ddl-auto: create-drop
+    show-sql: true # Show SQL queries in console for debugging
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true # Pretty print SQL
+
+  # Redis Configuration (Development)
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  # Email Configuration for Development
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_USERNAME}
+    password: ${EMAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# Server Configuration
+server:
+  servlet:
+    context-path: /api
+  port: 8080
+
+# Logging Configuration for Development
+logging:
+  level:
+    com.separrone.awakeningbackend: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

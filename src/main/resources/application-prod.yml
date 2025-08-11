@@ -1,0 +1,73 @@
+# Production Environment Configuration
+# This file is used when SPRING_PROFILES_ACTIVE=prod
+
+spring:
+  # Production Database Configuration (Render PostgreSQL)
+  datasource:
+    url: ${DATABASE_URL}
+    # Render provides DATABASE_URL in format: postgresql://user:pass@host:port/db
+    # Spring Boot automatically parses this format
+    driver-class-name: org.postgresql.Driver
+    
+    # Connection Pool Configuration for Production
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+
+  # JPA Configuration for Production
+  jpa:
+    hibernate:
+      # validate: Only validate schema, don't modify
+      ddl-auto: validate
+    show-sql: false # Don't log SQL in production (performance & security)
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # Enable SQL statement caching
+        query:
+          plan_cache_max_size: 2048
+
+  # Redis Configuration (Production)
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+
+  # Email Configuration for Production
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_USERNAME}
+    password: ${EMAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# Server Configuration
+server:
+  servlet:
+    context-path: /api
+  port: ${PORT:8080} # Render provides PORT environment variable
+  
+  # Production Security Headers
+  forward-headers-strategy: native
+
+# Logging Configuration for Production  
+logging:
+  level:
+    com.separrone.awakeningbackend: INFO
+    org.springframework.security: WARN
+    org.hibernate: WARN
+    root: INFO
+  
+  # Structured logging for production monitoring
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"

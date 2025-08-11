@@ -1,0 +1,67 @@
+# Remote Development Environment Configuration (Render)
+# This file is used when SPRING_PROFILES_ACTIVE=dev-remote
+
+spring:
+  # Remote Dev Database Configuration (Render PostgreSQL) 
+  datasource:
+    url: ${DATABASE_URL}
+    # Render provides DATABASE_URL in format: postgresql://user:pass@host:port/db
+    # Spring Boot automatically parses this format
+    driver-class-name: org.postgresql.Driver
+    
+    # Smaller connection pool for dev environment (conserve resources)
+    hikari:
+      maximum-pool-size: 3
+      minimum-idle: 1
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+
+  # JPA Configuration for Remote Development
+  jpa:
+    hibernate:
+      # update: Automatically update schema but preserve data
+      ddl-auto: update
+    show-sql: true # Show SQL queries for debugging (but not formatted for performance)
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Redis Configuration (Remote Development)
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+
+  # Email Configuration for Remote Development
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_USERNAME}
+    password: ${EMAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+# Server Configuration
+server:
+  servlet:
+    context-path: /api
+  port: ${PORT:8080} # Render provides PORT environment variable
+
+# Logging Configuration for Remote Development  
+logging:
+  level:
+    com.separrone.awakeningbackend: DEBUG
+    org.springframework.security: INFO # Less verbose than local dev
+    org.hibernate: INFO # Less verbose than local dev
+    root: INFO
+  
+  # Structured logging for better Render log readability
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%level] %logger{36} - %msg%n"
