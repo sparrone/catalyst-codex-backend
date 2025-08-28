@@ -9,6 +9,7 @@ import com.separrone.awakeningbackend.service.UserSettingsService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -35,15 +36,18 @@ public class SecurityConfig {
     private final UserRepository userRepository;
     private final UserSettingsService userSettingsService;
     private final ObjectMapper objectMapper;
+    private final Environment environment;
 
     public SecurityConfig(DatabaseUserDetailsService userDetailsService,
                           UserRepository userRepository,
                           UserSettingsService userSettingsService,
-                          ObjectMapper objectMapper) {
+                          ObjectMapper objectMapper,
+                          Environment environment) {
         this.userDetailsService = userDetailsService;
         this.userRepository = userRepository;
         this.userSettingsService = userSettingsService;
         this.objectMapper = objectMapper;
+        this.environment = environment;
     }
 
     @Bean
@@ -52,6 +56,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable()) // enable in prod if possible
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Allow CORS preflight
                         .requestMatchers(HttpMethod.GET, "/users/**").permitAll()
                         .requestMatchers("/auth/register", "/auth/verify").permitAll()
                         .requestMatchers(HttpMethod.GET, "/forum/categories/**").permitAll()
@@ -111,21 +116,16 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         
         // Environment-aware CORS origins
-        String activeProfile = System.getProperty("spring.profiles.active", "dev");
-        if ("prod".equals(activeProfile)) {
-            // Production origins
-            config.setAllowedOrigins(List.of(
-                "https://awakening.hosting.com", // Production frontend domain
-                "https://awakening-frontend.onrender.com" // Alternative if using Render for frontend
+        DeploymentEnvironment env = DeploymentEnvironment.fromProfiles(environment.getActiveProfiles());
+        
+        switch (env) {
+            case PRODUCTION -> config.setAllowedOrigins(List.of(
+                "https://separrone.com"
             ));
-        } else if ("dev-remote".equals(activeProfile)) {
-            // Remote development environment origins
-            config.setAllowedOrigins(List.of(
-                "https://awakening-frontend-dev.onrender.com" // Remote dev frontend
+            case REMOTE_DEV -> config.setAllowedOrigins(List.of(
+                "https://awakening-frontend-dev.onrender.com"
             ));
-        } else {
-            // Local development origins
-            config.setAllowedOrigins(List.of(
+            case LOCAL_DEV -> config.setAllowedOrigins(List.of(
                 "http://localhost:5173", // Local Vite dev server
                 "http://localhost:5174", // Alternative local port
                 "http://localhost:3000"  // Alternative React dev server port
@@ -153,16 +153,24 @@ public class SecurityConfig {
         serializer.setUseHttpOnlyCookie(true);
         
         // Environment-aware cookie security
-        String activeProfile = System.getProperty("spring.profiles.active", "dev");
-        if ("prod".equals(activeProfile)) {
-            serializer.setUseSecureCookie(true); // Require HTTPS in production
-            serializer.setSameSite("Strict"); // Stricter CSRF protection in production
-        } else if ("dev-remote".equals(activeProfile)) {
-            serializer.setUseSecureCookie(true); // Require HTTPS for remote dev (Render uses HTTPS)
-            serializer.setSameSite("Lax"); // More lenient for development testing
-        } else {
-            serializer.setUseSecureCookie(false); // Allow HTTP on localhost
-            serializer.setSameSite("Lax"); // More lenient for local development
+        DeploymentEnvironment env = DeploymentEnvironment.fromProfiles(environment.getActiveProfiles());
+        
+        switch (env) {
+            case PRODUCTION -> {
+                serializer.setUseSecureCookie(true); // Require HTTPS in production
+                serializer.setSameSite("Strict"); // Maximum CSRF protection (same-site subdomain)
+                serializer.setCookiePath("/"); // Set cookie path to root for broader access
+            }
+            case REMOTE_DEV -> {
+                serializer.setUseSecureCookie(true); // Require HTTPS for remote dev
+                serializer.setSameSite("Lax"); // More lenient for development testing
+                serializer.setCookiePath("/"); // Set cookie path to root
+            }
+            case LOCAL_DEV -> {
+                serializer.setUseSecureCookie(false); // Allow HTTP on localhost
+                serializer.setSameSite("Lax"); // More lenient for local development
+                serializer.setCookiePath("/"); // Set cookie path to root
+            }
         }
         
         serializer.setCookieMaxAge(7 * 24 * 60 * 60); // 7 days

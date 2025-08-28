@@ -1,0 +1,48 @@
+# Maven
+target/
+!target/*.jar
+.mvn/
+mvnw
+mvnw.cmd
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation (keep CLAUDE.md, exclude others)
+README.md
+HELP.md
+
+# Keep scripts directory (needed for initialization)
+!scripts/
+
+# Logs
+*.log
+
+# Local database files (pre-initialized database will be included)
+*.db-journal
+
+# Include the pre-initialized production database
+!data/awakening-prod.db
+
+# HTTP files
+*.http
+
+# Local config files
+application-dev*.yml
+application-local*.yml
+
+# Temporary files
+*.tmp
+*.temp

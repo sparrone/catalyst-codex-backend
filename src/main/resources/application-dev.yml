@@ -2,29 +2,27 @@
 # This file is used when SPRING_PROFILES_ACTIVE=dev
 
 spring:
-  # Development Database Configuration  
+  # Development Database Configuration (SQLite)
   datasource:
-    url: jdbc:postgresql://localhost:5432/awakening
-    username: ${DB_USERNAME:test_user}
-    password: ${DB_PASSWORD:test_password}
-    driver-class-name: org.postgresql.Driver
+    url: jdbc:sqlite:./awakening-dev.db
+    driver-class-name: org.sqlite.JDBC
 
   # JPA Configuration for Development
   jpa:
     hibernate:
-      # create-drop: Recreates schema on startup (good for development)
-      ddl-auto: create-drop
-    show-sql: true # Show SQL queries in console for debugging
+      # update: Create tables if they don't exist, preserve data if they do
+      ddl-auto: update
+    show-sql: false # Disable SQL logging for faster startup
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: org.hibernate.community.dialect.SQLiteDialect
         format_sql: true # Pretty print SQL
 
-  # Redis Configuration (Development)
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+  # Spring Session Configuration
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: always
 
   # Email Configuration for Development
   mail:
