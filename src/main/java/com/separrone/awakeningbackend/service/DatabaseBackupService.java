@@ -45,19 +45,27 @@ public class DatabaseBackupService {
     /**
      * Restore database from backup when application starts (production only)
      * Always restore from latest backup to ensure session data persists across cold starts
+     * Non-blocking: Application continues startup even if backup restoration fails
      */
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
-        log.info("Application ready - restoring from latest backup...");
+        log.info("Application ready - attempting to restore from latest backup...");
         
-        boolean restored = restoreFromLatestBackup();
-        if (!restored) {
-            log.info("No timestamped backup found, trying initial backup...");
-            restored = restoreFromBackup("awakening-backup-initial.db");
+        try {
+            boolean restored = restoreFromLatestBackup();
             if (!restored) {
-                log.error("No backup found to restore! Application cannot start without a database.");
-                throw new RuntimeException("No database backup available for restoration");
+                log.info("No timestamped backup found, trying initial backup...");
+                restored = restoreFromBackup("awakening-backup-initial.db");
+                if (!restored) {
+                    log.warn("No backup found to restore. Application will continue with existing/empty database.");
+                } else {
+                    log.info("Successfully restored from initial backup");
+                }
+            } else {
+                log.info("Successfully restored from latest backup");
             }
+        } catch (Exception e) {
+            log.error("Backup restoration failed, but application will continue startup", e);
         }
     }
 
