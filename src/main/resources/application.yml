@@ -10,12 +10,6 @@ spring:
   profiles:
     default: dev
 
-  # Session Configuration
-  session:
-    store-type: jdbc
-    timeout: 7d # 7 days session timeout
-    jdbc:
-      initialize-schema: embedded
 
   # Jackson JSON Configuration
   jackson:

@@ -1,143 +1,94 @@
 package com.separrone.awakeningbackend.controller;
 
-import com.separrone.awakeningbackend.dto.CategoryDTO;
-import com.separrone.awakeningbackend.dto.CategoryThreadsResponseDTO;
-import com.separrone.awakeningbackend.dto.ThreadDTO;
-import com.separrone.awakeningbackend.entity.Category;
-import com.separrone.awakeningbackend.entity.Thread;
-import com.separrone.awakeningbackend.repository.CategoryRepository;
-import com.separrone.awakeningbackend.repository.ThreadRepository;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import com.separrone.awakeningbackend.model.FirestoreCategory;
+import com.separrone.awakeningbackend.model.FirestoreThread;
+import com.separrone.awakeningbackend.repository.FirestoreCategoryRepository;
+import com.separrone.awakeningbackend.repository.FirestoreThreadRepository;
+import com.separrone.awakeningbackend.security.FirebaseAuthUtil;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/forum/categories")
 public class CategoryController {
 
-    private final CategoryRepository categoryRepository;
-    private final ThreadRepository threadRepository;
+    @Autowired
+    private FirestoreCategoryRepository categoryRepository;
 
-    public CategoryController(CategoryRepository categoryRepository, ThreadRepository threadRepository) {
-        this.categoryRepository = categoryRepository;
-        this.threadRepository = threadRepository;
-    }
+    @Autowired
+    private FirestoreThreadRepository threadRepository;
 
-    // Get all categories (for forum homepage)
     @GetMapping
-    public ResponseEntity<List<CategoryDTO>> getAllCategories() {
-        List<Category> categories = categoryRepository.findAllByOrderBySortOrderAsc();
-        List<CategoryDTO> categoryDTOs = categories.stream()
-                .map(CategoryDTO::fromEntity)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(categoryDTOs);
+    public ResponseEntity<?> getAllCategories() {
+        try {
+            List<FirestoreCategory> categories = categoryRepository.findAll();
+            return ResponseEntity.ok(categories);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to get categories: " + e.getMessage()));
+        }
     }
 
-    // Get specific category by ID
     @GetMapping("/{id}")
-    public ResponseEntity<CategoryDTO> getCategoryById(@PathVariable Long id) {
-        return categoryRepository.findById(id)
-                .map(CategoryDTO::fromEntity)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> getCategoryById(@PathVariable String id) {
+        try {
+            Optional<FirestoreCategory> categoryOpt = categoryRepository.findById(id);
+            if (categoryOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(categoryOpt.get());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to get category: " + e.getMessage()));
+        }
     }
 
-    // Get threads in a category with pagination
     @GetMapping("/{id}/threads")
-    public ResponseEntity<CategoryThreadsResponseDTO> getThreadsInCategory(
-            @PathVariable Long id,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<?> getCategoryThreads(@PathVariable String id) {
+        try {
+            Optional<FirestoreCategory> categoryOpt = categoryRepository.findById(id);
+            if (categoryOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
 
-        Category category = categoryRepository.findById(id).orElse(null);
-        if (category == null) {
-            return ResponseEntity.notFound().build();
+            List<FirestoreThread> threads = threadRepository.findByCategoryId(id);
+            
+            return ResponseEntity.ok(Map.of(
+                    "category", categoryOpt.get(),
+                    "threads", threads
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to get category threads: " + e.getMessage()));
         }
-
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Thread> threadsPage = threadRepository.findByCategoryOrderByPinnedAndLastPost(category, pageable);
-
-        List<ThreadDTO> threadDTOs = threadsPage.getContent().stream()
-                .map(ThreadDTO::summaryFromEntity)
-                .collect(Collectors.toList());
-
-        CategoryThreadsResponseDTO response = new CategoryThreadsResponseDTO(
-                CategoryDTO.fromEntity(category),
-                threadDTOs,
-                threadsPage.getNumber(),
-                threadsPage.getTotalPages(),
-                threadsPage.getTotalElements()
-        );
-
-        return ResponseEntity.ok(response);
     }
 
-    // Admin only: Create new category
     @PostMapping
-    public ResponseEntity<?> createCategory(@RequestBody Map<String, Object> request) {
-        // TODO: Add admin role check here
+    public ResponseEntity<?> createCategory(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
+        try {
+            FirebaseAuthUtil.requireAuthentication(httpRequest);
 
-        String name = (String) request.get("name");
-        String description = (String) request.get("description");
-        Integer sortOrder = (Integer) request.get("sortOrder");
+            String name = request.get("name");
+            String description = request.get("description");
 
-        if (name == null || name.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("Category name is required");
+            if (name == null || name.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Category name is required"));
+            }
+
+            FirestoreCategory category = new FirestoreCategory(name, description);
+            categoryRepository.save(category);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(category);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to create category: " + e.getMessage()));
         }
-
-        if (categoryRepository.existsByName(name)) {
-            return ResponseEntity.badRequest().body("Category name already exists");
-        }
-
-        Category category = new Category(name, description, sortOrder);
-        Category savedCategory = categoryRepository.save(category);
-
-        return ResponseEntity.ok(savedCategory);
-    }
-
-    // Admin only: Update category
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateCategory(@PathVariable Long id, @RequestBody Map<String, Object> request) {
-        // TODO: Add admin role check here
-
-        Category category = categoryRepository.findById(id).orElse(null);
-        if (category == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        String name = (String) request.get("name");
-        String description = (String) request.get("description");
-        Integer sortOrder = (Integer) request.get("sortOrder");
-
-        if (name != null) category.setName(name);
-        if (description != null) category.setDescription(description);
-        if (sortOrder != null) category.setSortOrder(sortOrder);
-
-        Category savedCategory = categoryRepository.save(category);
-        return ResponseEntity.ok(savedCategory);
-    }
-
-    // Admin only: Delete category
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteCategory(@PathVariable Long id) {
-        // TODO: Add admin role check here
-
-        if (!categoryRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
-
-        // Check if category has threads
-        long threadCount = threadRepository.countByCategory(categoryRepository.findById(id).get());
-        if (threadCount > 0) {
-            return ResponseEntity.badRequest().body("Cannot delete category with existing threads");
-        }
-
-        categoryRepository.deleteById(id);
-        return ResponseEntity.ok("Category deleted successfully");
     }
 }

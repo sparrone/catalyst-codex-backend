@@ -40,3 +40,6 @@ build/
 .env.local
 .env.dev
 .env.prod
+
+### Firebase Credentials ###
+src/main/resources/firebase-service-account-key.json

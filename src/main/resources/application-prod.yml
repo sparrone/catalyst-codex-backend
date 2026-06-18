@@ -1,41 +1,8 @@
 # Production Environment Configuration
-# This file is used when SPRING_PROFILES_ACTIVE=prod
+# Used when SPRING_PROFILES_ACTIVE=prod
+# Firebase/Firestore access via Application Default Credentials (Cloud Run service account)
 
 spring:
-  # Session Configuration for Production
-  session:
-    store-type: jdbc
-    timeout: 7d # 7 days session timeout
-    jdbc:
-      initialize-schema: embedded
-
-  # Production Database Configuration (SQLite on Google Cloud Run)
-  datasource:
-    url: jdbc:sqlite:/app/data/awakening-prod.db
-    driver-class-name: org.sqlite.JDBC
-    
-    # Connection Pool Configuration for Production SQLite
-    hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
-      connection-timeout: 20000
-      idle-timeout: 300000
-      max-lifetime: 1200000
-
-  # JPA Configuration for Production
-  jpa:
-    hibernate:
-      # update: Allow schema updates (SQLite is more flexible than validate)
-      ddl-auto: update
-    show-sql: false # Don't log SQL in production (performance & security)
-    properties:
-      hibernate:
-        dialect: org.hibernate.community.dialect.SQLiteDialect
-        # Enable SQL statement caching for better performance
-        query:
-          plan_cache_max_size: 2048
-
-  # Email Configuration for Production
   mail:
     host: smtp.gmail.com
     port: 587
@@ -48,43 +15,18 @@ spring:
           starttls:
             enable: true
 
-# Server Configuration
 server:
   servlet:
     context-path: /api
-  port: ${PORT:8080} # Cloud Run provides PORT environment variable
-  
-  # Production Security Headers
+  port: ${PORT:8080}
   forward-headers-strategy: native
 
-# Logging Configuration for Production  
 logging:
   level:
     com.separrone.awakeningbackend: INFO
-    org.springframework.security: WARN
-    org.hibernate: WARN
     root: INFO
-  
-  # Structured logging for Google Cloud Run
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
-# Application-specific configuration
 app:
-  # Frontend URL for CORS (will be set via environment variable)
-  frontend-url: ${FRONTEND_URL:http://localhost:3000}
-  
-  # Google Cloud Storage configuration for SQLite backups
-  gcs:
-    bucket-name: ${GCS_BUCKET_NAME:awakening-db-backups-sparr}
-    backup-enabled: ${BACKUP_ENABLED:true}
-    backup-interval: ${BACKUP_INTERVAL_HOURS:6}
-
-# Security configuration for production
-security:
-  # Allow frontend domain for CORS
-  cors:
-    allowed-origins: ${FRONTEND_URL:http://localhost:3000}
-    allowed-methods: GET,POST,PUT,DELETE,OPTIONS
-    allowed-headers: "*"
-    allow-credentials: true
+  frontend-url: ${FRONTEND_URL:https://separrone.com}

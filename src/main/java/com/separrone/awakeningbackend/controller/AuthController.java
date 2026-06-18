@@ -1,106 +1,105 @@
 package com.separrone.awakeningbackend.controller;
 
-import com.separrone.awakeningbackend.dto.RegisterRequestDTO;
-import com.separrone.awakeningbackend.entity.User;
-import com.separrone.awakeningbackend.entity.VerificationToken;
-import com.separrone.awakeningbackend.repository.UserRepository;
-import com.separrone.awakeningbackend.service.EmailService;
-import com.separrone.awakeningbackend.service.VerificationTokenService;
-import jakarta.mail.MessagingException;
-import jakarta.validation.Valid;
-import org.springframework.http.HttpHeaders;
+import com.separrone.awakeningbackend.model.FirestoreUser;
+import com.separrone.awakeningbackend.repository.FirestoreUserRepository;
+import com.separrone.awakeningbackend.security.FirebaseAuthUtil;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.URI;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final EmailService emailService;
-    private final VerificationTokenService verificationTokenService;
+    @Autowired
+    private FirestoreUserRepository userRepository;
 
-    public AuthController(UserRepository userRepository,
-                          PasswordEncoder passwordEncoder,
-                          EmailService emailService,
-                          VerificationTokenService verificationTokenService) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.emailService = emailService;
-        this.verificationTokenService = verificationTokenService;
-    }
-
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequestDTO request) {
-        Map<String, String> fieldErrors = new HashMap<>();
-
-        if (userRepository.existsByUsername(request.getUsername())) {
-            fieldErrors.put("username", "Username already taken");
-        }
-
-        if (userRepository.existsByEmailIgnoreCase(request.getEmail())) {
-            fieldErrors.put("email", "Email already in use");
-        }
-
-        if (!fieldErrors.isEmpty()) {
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("errors", fieldErrors);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-        }
-
-        User user = new User();
-        user.setUsername(request.getUsername());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setEmail(request.getEmail());
-        user.setEnabled(false);
-        userRepository.save(user);
-
-        VerificationToken verificationToken = verificationTokenService.createTokenForUser(user);
-
+    @PostMapping("/profile/setup")
+    public ResponseEntity<?> setupProfile(@RequestBody Map<String, String> request, HttpServletRequest httpRequest) {
         try {
-            emailService.sendVerificationEmail(
-                    user.getEmail(),
-                    user.getUsername(),
-                    verificationToken.getToken()
-            );
-        } catch (MessagingException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to send verification email: " + e.getMessage());
-        }
+            FirebaseAuthUtil.requireAuthentication(httpRequest);
+            String firebaseUid = FirebaseAuthUtil.getFirebaseUid(httpRequest);
+            String email = FirebaseAuthUtil.getFirebaseEmail(httpRequest);
+            
+            String username = request.get("username");
+            if (username == null || username.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Username is required"));
+            }
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of("message", "Registration successful. Please check your email to verify your account."));
+            // Check if username is already taken
+            Optional<FirestoreUser> existingUser = userRepository.findByUsername(username);
+            if (existingUser.isPresent() && !existingUser.get().getId().equals(firebaseUid)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("error", "Username already taken"));
+            }
+
+            // Create or update user profile
+            FirestoreUser user = userRepository.findById(firebaseUid)
+                    .orElse(new FirestoreUser(firebaseUid, username, email));
+            
+            user.setUsername(username);
+            user.setEmail(email);
+            userRepository.save(user);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Profile setup successful");
+            response.put("user", Map.of(
+                    "id", user.getId(),
+                    "username", user.getUsername(),
+                    "email", user.getEmail()
+            ));
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to setup profile: " + e.getMessage()));
+        }
     }
 
-    @GetMapping("/verify")
-    public ResponseEntity<?> verifyAccount(@RequestParam("token") String token) {
-        VerificationToken verificationToken = verificationTokenService.getToken(token);
+    @GetMapping("/profile")
+    public ResponseEntity<?> getProfile(HttpServletRequest httpRequest) {
+        try {
+            FirebaseAuthUtil.requireAuthentication(httpRequest);
+            String firebaseUid = FirebaseAuthUtil.getFirebaseUid(httpRequest);
 
-        if (verificationToken == null) {
-            return ResponseEntity.badRequest().body("Invalid verification token");
+            Optional<FirestoreUser> userOpt = userRepository.findById(firebaseUid);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "User profile not found"));
+            }
+
+            FirestoreUser user = userOpt.get();
+            Map<String, Object> profile = new HashMap<>();
+            profile.put("id", user.getId());
+            profile.put("username", user.getUsername());
+            profile.put("email", user.getEmail());
+            profile.put("enabled", user.isEnabled());
+            profile.put("createdAt", user.getCreatedAt());
+
+            return ResponseEntity.ok(profile);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to get profile: " + e.getMessage()));
         }
+    }
 
-        if (verificationToken.getExpiration().isBefore(LocalDateTime.now())) {
-            return ResponseEntity.badRequest().body("Verification token has expired");
+    @GetMapping("/status")
+    public ResponseEntity<?> getAuthStatus(HttpServletRequest httpRequest) {
+        boolean authenticated = FirebaseAuthUtil.isAuthenticated(httpRequest);
+        Map<String, Object> status = new HashMap<>();
+        status.put("authenticated", authenticated);
+        
+        if (authenticated) {
+            status.put("uid", FirebaseAuthUtil.getFirebaseUid(httpRequest));
+            status.put("email", FirebaseAuthUtil.getFirebaseEmail(httpRequest));
         }
-
-        User user = verificationToken.getUser();
-        user.setEnabled(true);
-        userRepository.save(user);
-
-        verificationTokenService.deleteToken(verificationToken);
-
-        URI redirectUri = URI.create("http://localhost:5173/awakening/email-verified");
-        HttpHeaders headers = new HttpHeaders();
-        headers.setLocation(redirectUri);
-        return new ResponseEntity<>(headers, HttpStatus.FOUND);
+        
+        return ResponseEntity.ok(status);
     }
 }

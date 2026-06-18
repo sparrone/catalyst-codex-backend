@@ -1,30 +1,7 @@
 # Development Environment Configuration
-# This file is used when SPRING_PROFILES_ACTIVE=dev
+# Requires: gcloud auth application-default login (for Firebase/Firestore access)
 
 spring:
-  # Development Database Configuration (SQLite)
-  datasource:
-    url: jdbc:sqlite:./awakening-dev.db
-    driver-class-name: org.sqlite.JDBC
-
-  # JPA Configuration for Development
-  jpa:
-    hibernate:
-      # update: Create tables if they don't exist, preserve data if they do
-      ddl-auto: update
-    show-sql: false # Disable SQL logging for faster startup
-    properties:
-      hibernate:
-        dialect: org.hibernate.community.dialect.SQLiteDialect
-        format_sql: true # Pretty print SQL
-
-  # Spring Session Configuration
-  session:
-    store-type: jdbc
-    jdbc:
-      initialize-schema: always
-
-  # Email Configuration for Development
   mail:
     host: smtp.gmail.com
     port: 587
@@ -37,16 +14,12 @@ spring:
           starttls:
             enable: true
 
-# Server Configuration
 server:
   servlet:
     context-path: /api
   port: 8080
 
-# Logging Configuration for Development
 logging:
   level:
     com.separrone.awakeningbackend: DEBUG
-    org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.web: DEBUG
