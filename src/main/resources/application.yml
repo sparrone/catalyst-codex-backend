@@ -4,7 +4,7 @@
 
 spring:
   application:
-    name: awakening-backend
+    name: catalyst-codex-backend
 
   # Default Profile (will be overridden by SPRING_PROFILES_ACTIVE)
   profiles:

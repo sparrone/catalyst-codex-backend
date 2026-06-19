@@ -14,13 +14,13 @@ public class EmailService {
     private final JavaMailSender mailSender;
 
     public void sendVerificationEmail(String to, String username, String token) throws MessagingException {
-        String subject = "Verify your Awakening account";
+        String subject = "Verify your Catalyst Codex account";
         String verificationLink = "http://localhost:8080/api/auth/verify?token=" + token;
         String body = "<p>Hello <b>" + username + "</b>,</p>"
                 + "<p>Please verify your email by clicking the link below:</p>"
                 + "<p><a href=\"" + verificationLink + "\">Verify Account</a></p>"
                 + "<p>If you didn't create an account, you can ignore this email.</p>"
-                + "<p>– Awakening Team</p>";
+                + "<p>– Catalyst Codex Team</p>";
 
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true);
@@ -31,11 +31,11 @@ public class EmailService {
     }
 
     public void sendPasswordChangeEmail(String to) throws MessagingException {
-        String subject = "Your Awakening account password was changed";
+        String subject = "Your Catalyst Codex account password was changed";
         String body = "<p>Hello,</p>"
-                + "<p>Your Awakening account password was successfully changed.</p>"
+                + "<p>Your Catalyst Codex account password was successfully changed.</p>"
                 + "<p>If you did not perform this action, please reset your password immediately.</p>"
-                + "<p>– Awakening Team</p>";
+                + "<p>– Catalyst Codex Team</p>";
 
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true);
@@ -46,13 +46,13 @@ public class EmailService {
     }
 
     public void sendEmailChangeVerification(String username, String newEmail, String token) throws MessagingException {
-        String subject = "Confirm your new Awakening account email";
+        String subject = "Confirm your new Catalyst Codex account email";
         String verificationLink = "http://localhost:8080/api/user/verify-email?token=" + token;
         String body = "<p>Hello <b>" + username + "</b>,</p>"
-                + "<p>You requested to change your Awakening account email. Please verify your new email by clicking the link below:</p>"
+                + "<p>You requested to change your Catalyst Codex account email. Please verify your new email by clicking the link below:</p>"
                 + "<p><a href=\"" + verificationLink + "\">Verify New Email</a></p>"
                 + "<p>If you didn’t request this, you can ignore this email.</p>"
-                + "<p>– Awakening Team</p>";
+                + "<p>– Catalyst Codex Team</p>";
 
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true);
@@ -63,12 +63,12 @@ public class EmailService {
     }
 
     public void sendEmailChangeNotification(String username, String oldEmail, String newEmail) throws MessagingException {
-        String subject = "Your Awakening account email change request";
+        String subject = "Your Catalyst Codex account email change request";
         String body = "<p>Hello <b>" + username + "</b>,</p>"
-                + "<p>We received a request to change your Awakening account email from <b>"
+                + "<p>We received a request to change your Catalyst Codex account email from <b>"
                 + oldEmail + "</b> to <b>" + newEmail + "</b>.</p>"
                 + "<p>If this wasn’t you, please reset your password immediately to secure your account.</p>"
-                + "<p>– Awakening Team</p>";
+                + "<p>– Catalyst Codex Team</p>";
 
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true);

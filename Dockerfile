@@ -27,25 +27,25 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
-RUN groupadd -r awakening && useradd -r -g awakening awakening
+RUN groupadd -r catalystcodex && useradd -r -g catalystcodex catalystcodex
 
 # Create application directory
 WORKDIR /app
 
 # Create data directory for SQLite database
-RUN mkdir -p /app/data && chown -R awakening:awakening /app
+RUN mkdir -p /app/data && chown -R catalystcodex:catalystcodex /app
 
 # Copy the built JAR from builder stage
-COPY --from=builder /app/target/awakening-backend-*.jar app.jar
+COPY --from=builder /app/target/catalyst-codex-backend-*.jar app.jar
 
 # Copy pre-initialized SQLite database
 COPY data/awakening-prod.db /app/data/awakening-prod.db
 
 # Change ownership to non-root user
-RUN chown -R awakening:awakening /app
+RUN chown -R catalystcodex:catalystcodex /app
 
 # Switch to non-root user
-USER awakening
+USER catalystcodex
 
 # Expose port (Cloud Run uses PORT environment variable)
 EXPOSE 8080

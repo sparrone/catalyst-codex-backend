@@ -13,10 +13,10 @@
     </parent>
 
     <groupId>com.separrone</groupId>
-    <artifactId>awakening-backend</artifactId>
+    <artifactId>catalyst-codex-backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>awakening-backend</name>
-    <description>awakening-backend</description>
+    <name>catalyst-codex-backend</name>
+    <description>catalyst-codex-backend</description>
 
     <properties>
         <java.version>17</java.version>
